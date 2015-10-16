@@ -23,13 +23,159 @@
         <property name="models">
             <list>
                 <value>alfresco/module/${project.artifactId}/model/scModel.xml</value>
+                <value>alfresco/module/${project.artifactId}/model/scRatingsModel.xml</value> 
+                 <value>alfresco/module/${project.artifactId}/model/scWorkflowModel.xml</value> 
             </list>
         </property>
         <property name="labels">
             <list>
                 <value>alfresco/module/${project.artifactId}/messages/scModel</value>
+                <value>alfresco/module/${project.artifactId}/messages/scRatingsModel</value>
+                <value>alfresco.module.${project.artifactId}.messages.scWorkflow</value>
             </list>        
         </property>
     </bean>
+     <bean id="${project.artifactId}_actionResourceBundles" parent="actionResourceBundles">
+        <property name="resourceBundles">
+            <list>
+                <value>alfresco.module.${project.artifactId}.messages.somecoactions</value>
+            </list>
+        </property>
+    </bean>
+    
+    <!-- Behaviors Tutorial -->
+    <bean id="${project.artifactId}_ratingBehavior" class="com.someco.behavior.Rating" init-method="init">
+        <property name="nodeService">
+            <ref bean="NodeService" />
+        </property>
+        <property name="policyComponent">
+            <ref bean="policyComponent" />
+        </property>
+    </bean>
 
+	<!-- Use either the Java approach or the JavaScript approach, but not both -->
+	<!-- 
+    <bean id="onCreateRatingNode" class="org.alfresco.repo.policy.registration.ClassPolicyRegistration" parent="policyRegistration">
+        <property name="policyName">
+            <value>{http://www.alfresco.org}onCreateNode</value>
+        </property>
+        <property name="className">
+            <value>{http://www.someco.com/model/ratings/1.0}rating</value>
+        </property>
+        <property name="behaviour">
+           <bean class="org.alfresco.repo.jscript.ScriptBehaviour" parent="scriptBehaviour">
+                        <property name="location">
+                                <bean class="org.alfresco.repo.jscript.ClasspathScriptLocation">
+                                <constructor-arg>
+	                                <value>alfresco/module/${project.artifactId}/scripts/onCreateRating.js</value>
+								</constructor-arg>
+                            	</bean>
+                        </property>
+           </bean>
+        </property>
+    </bean>    
+	<bean id="onDeleteRatingNode" class="org.alfresco.repo.policy.registration.ClassPolicyRegistration" parent="policyRegistration">
+        <property name="policyName">
+            <value>{http://www.alfresco.org}onDeleteNode</value>
+        </property>
+        <property name="className">
+            <value>{http://www.someco.com/model/ratings/1.0}rating</value>
+        </property>
+        <property name="behaviour">
+           <bean class="org.alfresco.repo.jscript.ScriptBehaviour" parent="scriptBehaviour">
+                        <property name="location">
+                                <bean class="org.alfresco.repo.jscript.ClasspathScriptLocation">
+                                <constructor-arg>
+	                                <value>alfresco/module/${project.artifactId}/scripts/onDeleteRating.js</value>
+								</constructor-arg>
+                            	</bean>
+                        </property>
+           </bean>
+        </property>
+    </bean>
+    -->    
+    
+    <!-- Actions Tutorial -->
+     <bean id="move-replaced" class="com.someco.action.executer.MoveReplacedActionExecuter" parent="action-executer">
+		<property name="fileFolderService">
+			<ref bean="FileFolderService" />
+		</property>
+		<property name="nodeService">
+			<ref bean="NodeService" />
+		</property>
+	</bean>
+
+    <bean id="set-web-flag" class="com.someco.action.executer.SetWebFlag" parent="action-executer">
+        <property name="nodeService">
+            <ref bean="NodeService" />
+        </property>
+    </bean>
+
+    <bean id="enable-web-flag" class="com.someco.action.executer.EnableWebFlag" parent="set-web-flag">
+        <property name="publicAction">
+            <value>false</value>
+        </property>
+    </bean>
+
+	<bean id="disable-web-flag" class="com.someco.action.executer.DisableWebFlag" parent="set-web-flag">
+        <property name="publicAction">
+            <value>false</value>
+        </property>
+    </bean>
+
+	<!-- Webscripts -->
+	  <bean id="ratingBean" class="com.someco.beans.RatingBean">
+        <property name="nodeService">
+            <ref bean="NodeService" />
+        </property>
+    </bean>
+
+    <bean id="webscript.com.someco.ratings.rating.post" class="com.someco.scripts.PostRating" parent="webscript">
+    	<property name="ratingBean">
+    		<ref bean="ratingBean" />    	
+        </property>
+        <property name="nodeService">
+            <ref bean="NodeService" />
+        </property>
+    </bean>
+    
+    <!-- Workflow Tutorials -->   
+    <bean id="webscript.com.someco.bpm.review.get" class="com.someco.scripts.GetReview" parent="webscript">
+        <property name="workflowService">
+            <ref bean="WorkflowService" />      
+        </property>
+    </bean>
+	
+	<!-- Workflows -->
+    <bean id="${project.artifactId}.workflowBootstrap" parent="workflowDeployer">
+        <property name="workflowDefinitions">
+            <list>
+                <props>
+                    <prop key="engineId">activiti</prop>
+                    <prop key="location">alfresco/module/${project.artifactId}/workflows/helloWorld.bpmn</prop>
+                    <prop key="mimetype">text/xml</prop>
+                    <prop key="redeploy">false</prop>
+                </props>
+                <props>
+                    <prop key="engineId">activiti</prop>
+                    <prop key="location">alfresco/module/${project.artifactId}/workflows/helloWorldFork.bpmn</prop>
+                    <prop key="mimetype">text/xml</prop>
+                    <prop key="redeploy">false</prop>
+                </props>
+                <props>
+                    <prop key="engineId">activiti</prop>
+                    <prop key="location">alfresco/module/${project.artifactId}/workflows/helloWorldUI.bpmn</prop>
+                    <prop key="mimetype">text/xml</prop>
+                    <prop key="redeploy">false</prop>            
+                </props>
+                <props>
+                    <prop key="engineId">activiti</prop>
+                    <prop key="location">alfresco/module/${project.artifactId}/workflows/publishWhitepaper.bpmn</prop>
+                    <prop key="mimetype">text/xml</prop>
+                    <prop key="redeploy">false</prop>            
+                </props>    
+                          
+            </list>
+        </property>
+        </bean>
 </beans>

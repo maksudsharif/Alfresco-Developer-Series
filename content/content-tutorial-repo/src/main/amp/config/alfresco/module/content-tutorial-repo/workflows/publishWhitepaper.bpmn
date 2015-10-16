@@ -1,0 +1,243 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:activiti="http://activiti.org/bpmn" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:omgdc="http://www.omg.org/spec/DD/20100524/DC" xmlns:omgdi="http://www.omg.org/spec/DD/20100524/DI" typeLanguage="http://www.w3.org/2001/XMLSchema" expressionLanguage="http://www.w3.org/1999/XPath" targetNamespace="http://www.activiti.org/test">
+  <process id="publishWhitepaper" name="Publish Whitepaper" isExecutable="true">
+    <startEvent id="startEvent" name="Start" activiti:formKey="scwf:submitReviewTask"></startEvent>
+    <endEvent id="endEvent" name="End"></endEvent>
+    <userTask id="operationsReviewUserTask" name="Operations Review" activiti:candidateGroups="GROUP_Operations" activiti:formKey="scwf:activitiOperationsReview">
+      <extensionElements>
+        <activiti:taskListener event="complete" class="org.alfresco.repo.workflow.activiti.tasklistener.ScriptTaskListener">
+          <activiti:field name="script">
+            <activiti:string><![CDATA[if(task.getVariableLocal('scwf_approveRejectOutcome') == 'Approve') {
+                            	var newApprovedCount = scwf_approveCount + 1;
+                            	execution.setVariable('scwf_approveCount', newApprovedCount);
+                        	}]]></activiti:string>
+          </activiti:field>
+          <activiti:field name="runAs">
+            <activiti:string><![CDATA[admin]]></activiti:string>
+          </activiti:field>
+        </activiti:taskListener>
+      </extensionElements>
+    </userTask>
+    <userTask id="thirdPartyUserReviewUserTask" name="Third-Party Review" activiti:assignee="${initiator.properties.userName}" activiti:formKey="scwf:activitiThirdPartyReview">
+      <extensionElements>
+        <activiti:taskListener event="create" class="com.someco.bpm.ExternalReviewNotification"></activiti:taskListener>
+        <activiti:taskListener event="complete" class="org.alfresco.repo.workflow.activiti.tasklistener.ScriptTaskListener">
+          <activiti:field name="script">
+            <activiti:string><![CDATA[if(task.getVariableLocal('scwf_approveRejectOutcome') == 'Approve') {
+                				execution.setVariable('scwf_tpApproved', true);
+							} else {
+								execution.setVariable('scwf_tpApproved', false);
+							}]]></activiti:string>
+          </activiti:field>
+          <activiti:field name="runAs">
+            <activiti:string><![CDATA[admin]]></activiti:string>
+          </activiti:field>
+        </activiti:taskListener>
+      </extensionElements>
+    </userTask>
+    <userTask id="reviseUserTask" name="Revise" activiti:assignee="${initiator.properties.userName}" activiti:formKey="scwf:activitiRevise">
+      <extensionElements>
+        <activiti:taskListener event="complete" class="org.alfresco.repo.workflow.activiti.tasklistener.ScriptTaskListener">
+          <activiti:field name="script">
+            <activiti:string><![CDATA[if(task.getVariableLocal('scwf_reviseOutcome') == 'Re-submit') {
+								execution.setVariable('scwf_resubmit', true);
+							} else {
+								execution.setVariable('scwf_resubmit', false);
+							}]]></activiti:string>
+          </activiti:field>
+          <activiti:field name="runAs">
+            <activiti:string><![CDATA[admin]]></activiti:string>
+          </activiti:field>
+        </activiti:taskListener>
+      </extensionElements>
+    </userTask>
+    <userTask id="marketingReviewUserTask" name="Marketing Review" activiti:candidateGroups="GROUP_Marketing" activiti:formKey="scwf:activitiMarketingReview">
+      <extensionElements>
+        <activiti:taskListener event="complete" class="org.alfresco.repo.workflow.activiti.tasklistener.ScriptTaskListener">
+          <activiti:field name="script">
+            <activiti:string><![CDATA[if(task.getVariableLocal('scwf_approveRejectOutcome') == 'Approve') {
+                            	var newApprovedCount = scwf_approveCount + 1;
+                            	execution.setVariable('scwf_approveCount', newApprovedCount);
+                       		 }]]></activiti:string>
+          </activiti:field>
+          <activiti:field name="runAs">
+            <activiti:string><![CDATA[admin]]></activiti:string>
+          </activiti:field>
+        </activiti:taskListener>
+      </extensionElements>
+    </userTask>
+    <serviceTask id="submitScriptTask" name="Submit" activiti:class="org.alfresco.repo.workflow.activiti.script.AlfrescoScriptDelegate">
+      <extensionElements>
+        <activiti:field name="runAs">
+          <activiti:string><![CDATA[admin]]></activiti:string>
+        </activiti:field>
+        <activiti:field name="script">
+          <activiti:string><![CDATA[execution.setVariable('scwf_approveCount', 0);
+							execution.setVariable('scwf_tpApproved', false);]]></activiti:string>
+        </activiti:field>
+      </extensionElements>
+    </serviceTask>
+    <parallelGateway id="preOpMarkReviewParallelGateway" name="Parallel Gateway"></parallelGateway>
+    <parallelGateway id="postOpMarkReviewParallelGateway" name="Parallel Gateway"></parallelGateway>
+    <exclusiveGateway id="reviseExclusiveGateway" name="Exclusive Gateway"></exclusiveGateway>
+    <exclusiveGateway id="thirdPartyReviewExclusiveGateway" name="Exclusive Gateway"></exclusiveGateway>
+    <sequenceFlow id="startToSubmitFlow" sourceRef="startEvent" targetRef="submitScriptTask"></sequenceFlow>
+    <sequenceFlow id="submitToParallelFlow" sourceRef="submitScriptTask" targetRef="preOpMarkReviewParallelGateway"></sequenceFlow>
+    <sequenceFlow id="parallelGatewayToOperationsReviewFlow" sourceRef="preOpMarkReviewParallelGateway" targetRef="operationsReviewUserTask"></sequenceFlow>
+    <sequenceFlow id="parallelGatewayToMarketingReviewFlow" sourceRef="preOpMarkReviewParallelGateway" targetRef="marketingReviewUserTask"></sequenceFlow>
+    <sequenceFlow id="operationsToParallelGatewayFlow" sourceRef="operationsReviewUserTask" targetRef="postOpMarkReviewParallelGateway"></sequenceFlow>
+    <sequenceFlow id="marketingToParallelGatewayFlow" sourceRef="marketingReviewUserTask" targetRef="postOpMarkReviewParallelGateway"></sequenceFlow>
+    <sequenceFlow id="postOpMarkReviewToExclusiveGatewayFlow" sourceRef="postOpMarkReviewParallelGateway" targetRef="reviseExclusiveGateway"></sequenceFlow>
+    <sequenceFlow id="reviseExclusiveGatewayToThirdPartyReviewExclusiveGatewayFlow" sourceRef="reviseExclusiveGateway" targetRef="thirdPartyReviewExclusiveGateway">
+      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${scwf_approveCount == 2}]]></conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="reviseExclusiveGatewayToReviseFlow" sourceRef="reviseExclusiveGateway" targetRef="reviseUserTask">
+      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${scwf_approveCount < 2}]]></conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="thirdPartyReviewExclusiveGatewayToThirdPartyReviewUserTaskFlow" sourceRef="thirdPartyReviewExclusiveGateway" targetRef="thirdPartyUserReviewUserTask">
+      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${scwf_reviewerEmail != ''}]]></conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="thirdPartyReviewToReviseUserTaskFlow" sourceRef="thirdPartyUserReviewUserTask" targetRef="reviseUserTask">
+      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${scwf_tpApproved == false}]]></conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="reviseToSubmitFlow" sourceRef="reviseUserTask" targetRef="submitScriptTask">
+      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${scwf_resubmit == true}]]></conditionExpression>
+    </sequenceFlow>
+    <userTask id="approvedNotificationUserTask" name="Approved Notification" activiti:assignee="${initiator.properties.userName}" activiti:formKey="scwf:activitiApprovedNotification">
+      <extensionElements>
+        <activiti:taskListener event="create" class="org.alfresco.repo.workflow.activiti.tasklistener.ScriptTaskListener">
+          <activiti:field name="script">
+            <activiti:string><![CDATA[var setWebFlagAction = actions.create("set-web-flag");
+                        	setWebFlagAction.parameters["active"] = true;
+                        	for (var i = 0; i < bpm_package.children.length; i++) {
+                            	logger.log("Approving node:" + bpm_package.children[i].nodeRef);
+                            	setWebFlagAction.execute(bpm_package.children[i]);
+                        	}]]></activiti:string>
+          </activiti:field>
+          <activiti:field name="runAs">
+            <activiti:string><![CDATA[admin]]></activiti:string>
+          </activiti:field>
+        </activiti:taskListener>
+      </extensionElements>
+    </userTask>
+    <sequenceFlow id="thirdPartyReviewGatewayToApprovedUserTaskFlow" sourceRef="thirdPartyReviewExclusiveGateway" targetRef="approvedNotificationUserTask">
+      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${scwf_reviewerEmail == ''}]]></conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="approvedNotificationToEndEventFlow" sourceRef="approvedNotificationUserTask" targetRef="endEvent"></sequenceFlow>
+    <sequenceFlow id="reviseToEndEventFlow" sourceRef="reviseUserTask" targetRef="endEvent">
+      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${scwf_resubmit == false}]]></conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="thirdPartyReviewToApprovedUserTaskFlow" sourceRef="thirdPartyUserReviewUserTask" targetRef="approvedNotificationUserTask">
+      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${scwf_tpApproved == true}]]></conditionExpression>
+    </sequenceFlow>
+  </process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_publishWhitepaper">
+    <bpmndi:BPMNPlane bpmnElement="publishWhitepaper" id="BPMNPlane_publishWhitepaper">
+      <bpmndi:BPMNShape bpmnElement="startEvent" id="BPMNShape_startEvent">
+        <omgdc:Bounds height="35.0" width="35.0" x="0.0" y="180.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="endEvent" id="BPMNShape_endEvent">
+        <omgdc:Bounds height="35.0" width="35.0" x="820.0" y="180.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="operationsReviewUserTask" id="BPMNShape_operationsReviewUserTask">
+        <omgdc:Bounds height="55.0" width="105.0" x="330.0" y="110.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="thirdPartyUserReviewUserTask" id="BPMNShape_thirdPartyUserReviewUserTask">
+        <omgdc:Bounds height="55.0" width="105.0" x="597.0" y="250.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="reviseUserTask" id="BPMNShape_reviseUserTask">
+        <omgdc:Bounds height="55.0" width="105.0" x="330.0" y="314.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="marketingReviewUserTask" id="BPMNShape_marketingReviewUserTask">
+        <omgdc:Bounds height="55.0" width="105.0" x="330.0" y="206.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="submitScriptTask" id="BPMNShape_submitScriptTask">
+        <omgdc:Bounds height="55.0" width="105.0" x="80.0" y="170.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="preOpMarkReviewParallelGateway" id="BPMNShape_preOpMarkReviewParallelGateway">
+        <omgdc:Bounds height="40.0" width="40.0" x="230.0" y="177.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="postOpMarkReviewParallelGateway" id="BPMNShape_postOpMarkReviewParallelGateway">
+        <omgdc:Bounds height="40.0" width="40.0" x="480.0" y="177.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="reviseExclusiveGateway" id="BPMNShape_reviseExclusiveGateway">
+        <omgdc:Bounds height="40.0" width="40.0" x="570.0" y="177.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="thirdPartyReviewExclusiveGateway" id="BPMNShape_thirdPartyReviewExclusiveGateway">
+        <omgdc:Bounds height="40.0" width="40.0" x="634.0" y="177.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="approvedNotificationUserTask" id="BPMNShape_approvedNotificationUserTask">
+        <omgdc:Bounds height="55.0" width="105.0" x="690.0" y="170.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge bpmnElement="startToSubmitFlow" id="BPMNEdge_startToSubmitFlow">
+        <omgdi:waypoint x="35.0" y="197.0"></omgdi:waypoint>
+        <omgdi:waypoint x="80.0" y="197.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="submitToParallelFlow" id="BPMNEdge_submitToParallelFlow">
+        <omgdi:waypoint x="185.0" y="197.0"></omgdi:waypoint>
+        <omgdi:waypoint x="230.0" y="197.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="parallelGatewayToOperationsReviewFlow" id="BPMNEdge_parallelGatewayToOperationsReviewFlow">
+        <omgdi:waypoint x="250.0" y="177.0"></omgdi:waypoint>
+        <omgdi:waypoint x="250.0" y="137.0"></omgdi:waypoint>
+        <omgdi:waypoint x="330.0" y="137.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="parallelGatewayToMarketingReviewFlow" id="BPMNEdge_parallelGatewayToMarketingReviewFlow">
+        <omgdi:waypoint x="250.0" y="217.0"></omgdi:waypoint>
+        <omgdi:waypoint x="250.0" y="233.0"></omgdi:waypoint>
+        <omgdi:waypoint x="330.0" y="233.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="operationsToParallelGatewayFlow" id="BPMNEdge_operationsToParallelGatewayFlow">
+        <omgdi:waypoint x="435.0" y="137.0"></omgdi:waypoint>
+        <omgdi:waypoint x="500.0" y="137.0"></omgdi:waypoint>
+        <omgdi:waypoint x="500.0" y="177.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="marketingToParallelGatewayFlow" id="BPMNEdge_marketingToParallelGatewayFlow">
+        <omgdi:waypoint x="435.0" y="233.0"></omgdi:waypoint>
+        <omgdi:waypoint x="500.0" y="233.0"></omgdi:waypoint>
+        <omgdi:waypoint x="500.0" y="217.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="postOpMarkReviewToExclusiveGatewayFlow" id="BPMNEdge_postOpMarkReviewToExclusiveGatewayFlow">
+        <omgdi:waypoint x="520.0" y="197.0"></omgdi:waypoint>
+        <omgdi:waypoint x="570.0" y="197.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="reviseExclusiveGatewayToThirdPartyReviewExclusiveGatewayFlow" id="BPMNEdge_reviseExclusiveGatewayToThirdPartyReviewExclusiveGatewayFlow">
+        <omgdi:waypoint x="610.0" y="197.0"></omgdi:waypoint>
+        <omgdi:waypoint x="634.0" y="197.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="reviseExclusiveGatewayToReviseFlow" id="BPMNEdge_reviseExclusiveGatewayToReviseFlow">
+        <omgdi:waypoint x="590.0" y="217.0"></omgdi:waypoint>
+        <omgdi:waypoint x="382.0" y="314.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="thirdPartyReviewExclusiveGatewayToThirdPartyReviewUserTaskFlow" id="BPMNEdge_thirdPartyReviewExclusiveGatewayToThirdPartyReviewUserTaskFlow">
+        <omgdi:waypoint x="654.0" y="217.0"></omgdi:waypoint>
+        <omgdi:waypoint x="649.0" y="250.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="thirdPartyReviewToReviseUserTaskFlow" id="BPMNEdge_thirdPartyReviewToReviseUserTaskFlow">
+        <omgdi:waypoint x="597.0" y="277.0"></omgdi:waypoint>
+        <omgdi:waypoint x="382.0" y="314.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="reviseToSubmitFlow" id="BPMNEdge_reviseToSubmitFlow">
+        <omgdi:waypoint x="382.0" y="314.0"></omgdi:waypoint>
+        <omgdi:waypoint x="132.0" y="225.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="thirdPartyReviewGatewayToApprovedUserTaskFlow" id="BPMNEdge_thirdPartyReviewGatewayToApprovedUserTaskFlow">
+        <omgdi:waypoint x="674.0" y="197.0"></omgdi:waypoint>
+        <omgdi:waypoint x="690.0" y="197.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="approvedNotificationToEndEventFlow" id="BPMNEdge_approvedNotificationToEndEventFlow">
+        <omgdi:waypoint x="795.0" y="197.0"></omgdi:waypoint>
+        <omgdi:waypoint x="820.0" y="197.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="reviseToEndEventFlow" id="BPMNEdge_reviseToEndEventFlow">
+        <omgdi:waypoint x="435.0" y="341.0"></omgdi:waypoint>
+        <omgdi:waypoint x="837.0" y="341.0"></omgdi:waypoint>
+        <omgdi:waypoint x="837.0" y="215.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="thirdPartyReviewToApprovedUserTaskFlow" id="BPMNEdge_thirdPartyReviewToApprovedUserTaskFlow">
+        <omgdi:waypoint x="649.0" y="250.0"></omgdi:waypoint>
+        <omgdi:waypoint x="742.0" y="225.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</definitions>

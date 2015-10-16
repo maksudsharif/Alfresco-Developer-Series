@@ -23,8 +23,19 @@
       <property name="resourceBundles">
          <list>
          	<value>alfresco.module.${project.artifactId}.messages.scModel</value>
+         	<value>alfresco.module.${project.artifactId}.messages.scRatingsModel</value>
+         	<value>alfresco.module.${project.artifactId}.messages.scActions</value>
+         	<value>alfresco.module.${project.artifactId}.messages.scWorkflow</value>
          </list>
       </property>
    </bean>
-
+	
+	<bean id="someco.evaluator.doclib.action.isActive" parent="evaluator.doclib.action.value">
+    <property name="accessor" value="node.properties.sc:isActive" />
+    <property name="comparator">
+        <bean class="org.alfresco.web.evaluator.StringEqualsComparator">
+            <property name="value" value="true" />
+        </bean>
+    </property>
+</bean>
 </beans>
